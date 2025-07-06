@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>入住记录 - 智慧宾馆管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #f5f6fa; min-height: 100vh; font-family: '微软雅黑', Arial, Roboto, sans-serif; }
+        .navbar {
+            background: #2563eb;
+            color: #fff;
+            box-shadow: 0 2px 12px rgba(37,99,235,0.10);
+        }
+        .navbar-brand { color: #fff !important; font-weight: bold; font-size: 1.2rem; letter-spacing: 2px; }
+        .main-box { background: #fff; border-radius: 18px; box-shadow: 0 6px 32px rgba(37,99,235,0.10); padding: 40px; max-width: 900px; margin: 40px auto 0 auto; }
+        .main-title { font-size: 1.5rem; font-weight: bold; margin-bottom: 24px; color: #2563eb; text-align: center; }
+        .table th, .table td { vertical-align: middle; }
+        .table-striped > tbody > tr:nth-of-type(odd) { background-color: #f1f5ff; }
+        .status-in { color: #22c55e; font-weight: bold; }
+        .status-out { color: #64748b; font-weight: bold; }
+        .btn-outline-secondary, .btn-outline-danger { border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#"><i class="bi bi-building me-2"></i>智慧宾馆管理系统</a>
+            <div class="d-flex">
+                <button class="btn btn-outline-secondary me-2" onclick="goBack()"><i class="bi bi-arrow-left me-1"></i>返回</button>
+                <button class="btn btn-outline-danger" onclick="logout()"><i class="bi bi-box-arrow-right me-1"></i>退出登录</button>
+            </div>
+        </div>
+    </nav>
+    <div class="main-box">
+        <div class="main-title">我的入住记录</div>
+        
+        <!-- 时间查询区域 -->
+        <div class="search-section mb-4">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">开始时间</label>
+                    <input type="date" class="form-control" id="startDate">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">结束时间</label>
+                    <input type="date" class="form-control" id="endDate">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">状态筛选</label>
+                    <select class="form-select" id="statusFilter">
+                        <option value="">全部状态</option>
+                        <option value="in">在住</option>
+                        <option value="out">已退房</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-primary me-2" onclick="searchRecords()">
+                        <i class="bi bi-search me-1"></i>查询
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="clearSearch()">
+                        <i class="bi bi-x-circle me-1"></i>清除
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover table-striped align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>房间号</th>
+                        <th>类型</th>
+                        <th>价格</th>
+                        <th>入住时间</th>
+                        <th>退房时间</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody id="recordTable"></tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+    // 登录态校验
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (!user || !user.idCard) {
+        window.location.href = 'login.html';
+    }
+    function goBack() { window.location.href = 'customer-dashboard.html'; }
+    function logout() { localStorage.removeItem('user'); window.location.href = 'login.html'; }
+    // 加载入住记录
+    async function loadRecords() {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (!user.idCard) return;
+        const res = await fetch('/api/checkin-records/by-customer?idCard=' + encodeURIComponent(user.idCard));
+        const data = res.ok ? await res.json() : [];
+        displayRecords(data);
+    }
+    
+    // 显示记录
+    function displayRecords(records) {
+        const tbody = document.getElementById('recordTable');
+        tbody.innerHTML = '';
+        records.forEach(r => {
+            tbody.innerHTML += `<tr>
+                <td>${r.room ? r.room.roomNumber : ''}</td>
+                <td>${r.room ? r.room.type : ''}</td>
+                <td>${r.price != null ? r.price : ''}</td>
+                <td>${r.checkinTime ? r.checkinTime.replace('T', ' ').substring(0, 19) : ''}</td>
+                <td>${r.checkoutTime ? r.checkoutTime.replace('T', ' ').substring(0, 19) : ''}</td>
+                <td>${r.checkoutTime ? '<span class=\'status-out\'>已退房</span>' : '<span class=\'status-in\'>在住</span>'}</td>
+            </tr>`;
+        });
+    }
+    
+    // 查询记录
+    async function searchRecords() {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (!user.idCard) return;
+        
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const statusFilter = document.getElementById('statusFilter').value;
+        
+        const res = await fetch('/api/checkin-records/by-customer?idCard=' + encodeURIComponent(user.idCard));
+        const data = res.ok ? await res.json() : [];
+        
+        // 过滤记录
+        let filteredRecords = data;
+        
+        if (startDate) {
+            filteredRecords = filteredRecords.filter(r => {
+                if (!r.checkinTime) return false;
+                const checkinDate = r.checkinTime.split('T')[0];
+                return checkinDate >= startDate;
+            });
+        }
+        
+        if (endDate) {
+            filteredRecords = filteredRecords.filter(r => {
+                if (!r.checkinTime) return false;
+                const checkinDate = r.checkinTime.split('T')[0];
+                return checkinDate <= endDate;
+            });
+        }
+        
+        if (statusFilter) {
+            filteredRecords = filteredRecords.filter(r => {
+                if (statusFilter === 'in') {
+                    return !r.checkoutTime;
+                } else if (statusFilter === 'out') {
+                    return r.checkoutTime;
+                }
+                return true;
+            });
+        }
+        
+        displayRecords(filteredRecords);
+    }
+    
+    // 清除搜索
+    function clearSearch() {
+        document.getElementById('startDate').value = '';
+        document.getElementById('endDate').value = '';
+        document.getElementById('statusFilter').value = '';
+        loadRecords();
+    }
+    loadRecords();
+    </script>
+</body>
+</html> 

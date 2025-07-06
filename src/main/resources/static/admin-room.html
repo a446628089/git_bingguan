@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>房间管理 - 智慧宾馆管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #f5f6fa; min-height: 100vh; font-family: '微软雅黑', Arial, Roboto, sans-serif; }
+        .navbar {
+            background: #2563eb;
+            color: #fff;
+            box-shadow: 0 2px 12px rgba(37,99,235,0.10);
+        }
+        .navbar-brand { color: #fff !important; font-weight: bold; font-size: 1.2rem; letter-spacing: 2px; }
+        .main-box { background: #fff; border-radius: 18px; box-shadow: 0 6px 32px rgba(37,99,235,0.10); padding: 40px; max-width: 900px; margin: 40px auto 0 auto; }
+        .main-title { font-size: 1.5rem; font-weight: bold; margin-bottom: 24px; color: #2563eb; text-align: center; }
+        .table th, .table td { vertical-align: middle; }
+        .table-striped > tbody > tr:nth-of-type(odd) { background-color: #f1f5ff; }
+        .status-free { color: #22c55e; font-weight: bold; }
+        .status-occupied { color: #ef4444; font-weight: bold; }
+        .btn-outline-secondary, .btn-outline-danger, .btn-outline-primary { border-radius: 8px; }
+        .form-control { border-radius: 8px; }
+        .form-control:focus { border-color: #2563eb; box-shadow: 0 0 0 2px #2563eb33; }
+        .btn-primary { background: #2563eb; border: none; border-radius: 8px; font-weight: bold; }
+        .btn-primary:hover { background: #1d4ed8; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#"><i class="bi bi-building me-2"></i>智慧宾馆管理系统</a>
+            <div class="d-flex">
+                <button class="btn btn-outline-secondary me-2" onclick="goBack()"><i class="bi bi-arrow-left me-1"></i>返回</button>
+                <button class="btn btn-outline-danger" onclick="logout()"><i class="bi bi-box-arrow-right me-1"></i>退出登录</button>
+            </div>
+        </div>
+    </nav>
+    <div class="main-box">
+        <div class="main-title">房间管理</div>
+        <div class="mb-3">
+            <button class="btn btn-primary" onclick="showAddForm()"><i class="bi bi-plus-circle me-1"></i>添加房间</button>
+        </div>
+        <div id="roomCardList" class="row g-4"></div>
+    </div>
+    <!-- 添加/编辑房间模态框 -->
+    <div class="modal fade" id="roomModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">添加房间</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="roomForm">
+                        <input type="hidden" id="roomId">
+                        <div class="mb-3">
+                            <label class="form-label">房间号</label>
+                            <input type="text" class="form-control" id="roomNumber" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">类型</label>
+                            <input type="text" class="form-control" id="roomType" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">价格</label>
+                            <input type="number" class="form-control" id="roomPrice" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveRoom()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // 房间类型与图片映射
+    const roomTypeImages = {
+        '单人间': 'https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=800&q=80',
+        '双人间': 'https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=800&q=80',
+        '套房': 'https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?auto=format&fit=crop&w=800&q=80',
+        '豪华房': 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
+        '商务房': 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80',
+        '其他': 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=800&q=80'
+    };
+    // 登录态校验
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (!user || user.role !== 'ADMIN') {
+        window.location.href = 'login.html';
+    }
+    function goBack() { window.location.href = 'admin-dashboard.html'; }
+    function logout() { localStorage.removeItem('user'); window.location.href = 'login.html'; }
+    // 加载房间列表（卡片式）
+    async function loadRooms() {
+        const res = await fetch('/api/rooms');
+        const data = res.ok ? await res.json() : [];
+        const cardList = document.getElementById('roomCardList');
+        cardList.innerHTML = '';
+        data.forEach(r => {
+            const imgUrl = roomTypeImages[r.type] || roomTypeImages['其他'];
+            cardList.innerHTML += `
+            <div class="col-12 mb-4">
+                <div class="card shadow-sm h-100 flex-row" style="border-radius:20px;overflow:hidden;min-height:200px;">
+                    <div class="col-4 d-flex align-items-center" style="background:#f1f5ff;min-height:200px;">
+                        <img src="${imgUrl}" alt="房间图片" class="img-fluid w-100" style="object-fit:cover;height:180px;">
+                    </div>
+                    <div class="col-8">
+                        <div class="card-body d-flex flex-column h-100">
+                            <h5 class="card-title mb-2">房间号：${r.roomNumber}</h5>
+                            <div class="mb-1"><i class="bi bi-door-closed me-1"></i>类型：${r.type}</div>
+                            <div class="mb-1"><i class="bi bi-currency-yen me-1"></i>价格：￥${r.price}</div>
+                            <div class="mb-2">状态：${r.status === '空闲' ? '<span class=\'status-free\'>空闲</span>' : '<span class=\'status-occupied\'>已入住</span>'}</div>
+                            <div class="mt-auto">
+                                <button class="btn btn-outline-primary btn-sm me-1" onclick="editRoom(${r.id})"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-outline-warning btn-sm me-1" onclick="changeStatus(${r.id}, '${r.status}')"><i class="bi bi-arrow-repeat"></i></button>
+                                <button class="btn btn-outline-danger btn-sm" onclick="deleteRoom(${r.id})"><i class="bi bi-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        });
+    }
+    // 显示添加表单
+    function showAddForm() {
+        document.getElementById('modalTitle').textContent = '添加房间';
+        document.getElementById('roomForm').reset();
+        document.getElementById('roomId').value = '';
+        new bootstrap.Modal(document.getElementById('roomModal')).show();
+    }
+    // 编辑房间
+    async function editRoom(id) {
+        const res = await fetch('/api/rooms/' + id);
+        const data = res.ok ? await res.json() : {};
+        document.getElementById('modalTitle').textContent = '编辑房间';
+        document.getElementById('roomId').value = data.id;
+        document.getElementById('roomNumber').value = data.roomNumber;
+        document.getElementById('roomType').value = data.type;
+        document.getElementById('roomPrice').value = data.price;
+        new bootstrap.Modal(document.getElementById('roomModal')).show();
+    }
+    // 保存房间
+    async function saveRoom() {
+        const id = document.getElementById('roomId').value;
+        const data = {
+            roomNumber: document.getElementById('roomNumber').value,
+            type: document.getElementById('roomType').value,
+            price: document.getElementById('roomPrice').value
+        };
+        const url = id ? '/api/rooms/' + id : '/api/rooms';
+        const method = id ? 'PUT' : 'POST';
+        
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('roomModal')).hide();
+                await loadRooms(); // 确保重新加载房间列表
+                alert(id ? '房间更新成功！' : '房间添加成功！');
+            } else {
+                alert('操作失败，请重试！');
+            }
+        } catch (error) {
+            console.error('保存房间失败:', error);
+            alert('操作失败，请检查网络连接！');
+        }
+    }
+    // 删除房间
+    async function deleteRoom(id) {
+        if (!confirm('确定要删除这个房间吗？')) return;
+        await fetch('/api/rooms/' + id, { method: 'DELETE' });
+        loadRooms();
+    }
+    // 修改房间状态
+    async function changeStatus(id, currentStatus) {
+        const newStatus = currentStatus === '空闲' ? '已入住' : '空闲';
+        const confirmMessage = currentStatus === '空闲' ? 
+            '确定要将房间状态改为"已入住"吗？' : 
+            '确定要将房间状态改为"空闲"吗？';
+            
+        if (!confirm(confirmMessage)) return;
+        
+        try {
+            const response = await fetch('/api/rooms/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            
+            if (response.ok) {
+                await loadRooms(); // 重新加载房间列表
+                alert('房间状态修改成功！');
+            } else {
+                alert('状态修改失败，请重试！');
+            }
+        } catch (error) {
+            console.error('修改房间状态失败:', error);
+            alert('状态修改失败，请检查网络连接！');
+        }
+    }
+    // 定期刷新房间状态
+    setInterval(loadRooms, 5000); // 每5秒刷新一次
+    loadRooms();
+    </script>
+</body>
+</html> 

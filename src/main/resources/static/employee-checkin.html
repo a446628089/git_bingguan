@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>办理入住 - 智慧宾馆管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #f5f6fa; min-height: 100vh; font-family: '微软雅黑', Arial, Roboto, sans-serif; }
+        .navbar {
+            background: #2563eb;
+            color: #fff;
+            box-shadow: 0 2px 12px rgba(37,99,235,0.10);
+        }
+        .navbar-brand { color: #fff !important; font-weight: bold; font-size: 1.2rem; letter-spacing: 2px; }
+        .main-box { background: #fff; border-radius: 18px; box-shadow: 0 6px 32px rgba(37,99,235,0.10); padding: 40px; max-width: 500px; margin: 40px auto 0 auto; }
+        .main-title { font-size: 1.5rem; font-weight: bold; margin-bottom: 24px; color: #2563eb; text-align: center; }
+        .form-label { font-weight: 500; color: #2563eb; }
+        .form-control { border-radius: 8px; }
+        .form-control:focus { border-color: #2563eb; box-shadow: 0 0 0 2px #2563eb33; }
+        .btn-primary { background: #2563eb; border: none; border-radius: 8px; font-weight: bold; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-outline-danger, .btn-outline-secondary { border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#"><i class="bi bi-building me-2"></i>智慧宾馆管理系统</a>
+            <div class="d-flex">
+                <button class="btn btn-outline-secondary me-2" onclick="goBack()"><i class="bi bi-arrow-left me-1"></i>返回</button>
+                <button class="btn btn-outline-danger" onclick="logout()"><i class="bi bi-box-arrow-right me-1"></i>退出登录</button>
+            </div>
+        </div>
+    </nav>
+    <div class="main-box">
+        <div class="main-title">办理入住</div>
+        <form id="checkinForm">
+            <div class="mb-3">
+                <label class="form-label">客户身份证号</label>
+                <input type="text" class="form-control" id="idCard" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">客户姓名</label>
+                <input type="text" class="form-control" id="customerName" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">客户手机号</label>
+                <input type="text" class="form-control" id="customerPhone" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">房间号</label>
+                <input type="text" class="form-control" id="roomNumber" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">办理入住</button>
+        </form>
+    </div>
+    <script>
+    // 登录态校验
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (!user || user.role !== 'EMPLOYEE') {
+        window.location.href = 'login.html';
+    }
+    function goBack() { window.location.href = 'employee-dashboard.html'; }
+    function logout() { localStorage.removeItem('user'); window.location.href = 'login.html'; }
+    // 办理入住
+    document.getElementById('checkinForm').onsubmit = async function(e) {
+        e.preventDefault();
+        const idCard = document.getElementById('idCard').value.trim();
+        const customerName = document.getElementById('customerName').value.trim();
+        const customerPhone = document.getElementById('customerPhone').value.trim();
+        const roomNumber = document.getElementById('roomNumber').value.trim();
+        
+        // 查找房间
+        const roomRes = await fetch('/api/rooms?roomNumber=' + encodeURIComponent(roomNumber));
+        if (!roomRes.ok) {
+            alert('房间不存在！');
+            return;
+        }
+        const rooms = await roomRes.json();
+        if (rooms.length === 0) {
+            alert('房间不存在！');
+            return;
+        }
+        const room = rooms[0];
+        
+        // 查找客户
+        const customerRes = await fetch('/api/customers?idCard=' + encodeURIComponent(idCard));
+        if (!customerRes.ok) {
+            alert('客户不存在！');
+            return;
+        }
+        const customers = await customerRes.json();
+        if (customers.length === 0) {
+            alert('客户不存在！');
+            return;
+        }
+        const customer = customers[0];
+        
+        // 校验姓名和手机号
+        if (customer.name !== customerName || customer.phone !== customerPhone) {
+            alert('客户姓名或手机号不匹配！');
+            return;
+        }
+        
+        // 发送入住请求
+        const res = await fetch('/api/checkin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                customerName,
+                customerPhone,
+                idCard,
+                roomId: room.id
+            })
+        });
+        
+        if (res.ok) {
+            alert('办理入住成功！');
+            goBack();
+        } else {
+            const errorData = await res.json();
+            alert('办理失败：' + (errorData.message || '请检查信息或房间状态！'));
+        }
+    };
+    </script>
+</body>
+</html> 

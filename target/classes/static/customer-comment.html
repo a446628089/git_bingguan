@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>评论区 - 智慧宾馆管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { 
+            background: #f5f6fa; 
+            min-height: 100vh; 
+            font-family: '微软雅黑', Arial, Roboto, sans-serif; 
+        }
+        .navbar {
+            background: #2563eb;
+            color: #fff;
+            box-shadow: 0 2px 12px rgba(37,99,235,0.10);
+        }
+        .navbar-brand { 
+            color: #fff !important; 
+            font-weight: bold; 
+            font-size: 1.2rem; 
+            letter-spacing: 2px; 
+        }
+        .main-box { 
+            background: #fff; 
+            border-radius: 18px; 
+            box-shadow: 0 6px 32px rgba(37,99,235,0.10); 
+            padding: 40px; 
+            max-width: 900px; 
+            margin: 40px auto 0 auto; 
+        }
+        .main-title { 
+            font-size: 1.5rem; 
+            font-weight: bold; 
+            margin-bottom: 24px; 
+            color: #2563eb; 
+            text-align: center; 
+        }
+        .form-control { 
+            border-radius: 8px; 
+        }
+        .form-control:focus { 
+            border-color: #2563eb; 
+            box-shadow: 0 0 0 2px #2563eb33; 
+        }
+        .btn-primary { 
+            background: #2563eb; 
+            border: none; 
+            border-radius: 8px; 
+            font-weight: bold; 
+        }
+        .btn-primary:hover { 
+            background: #1d4ed8; 
+        }
+        .btn-outline-secondary, .btn-outline-danger { 
+            border-radius: 8px; 
+        }
+        
+        /* 评论区样式 */
+        .comment-section {
+            margin-top: 30px;
+        }
+        
+        .comment-item {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2563eb;
+            transition: all 0.3s ease;
+        }
+        
+        .comment-item:hover {
+            box-shadow: 0 4px 15px rgba(37,99,235,0.1);
+            transform: translateY(-2px);
+        }
+        
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .comment-author {
+            font-weight: bold;
+            color: #2563eb;
+            font-size: 1.1rem;
+        }
+        
+        .comment-time {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .comment-content {
+            color: #333;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        
+        .comment-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 0.85rem;
+        }
+        
+        .search-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .view-comments-btn {
+            background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%);
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(37,99,235,0.3);
+        }
+        
+        .view-comments-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37,99,235,0.4);
+            color: white;
+        }
+        
+        .comment-form {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #2563eb;
+            margin-bottom: 8px;
+        }
+        
+        .anonymous-badge {
+            background: #e9ecef;
+            color: #6c757d;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#"><i class="bi bi-building me-2"></i>智慧宾馆管理系统</a>
+            <div class="d-flex">
+                <button class="btn btn-outline-secondary me-2" onclick="goBack()"><i class="bi bi-arrow-left me-1"></i>返回</button>
+                <button class="btn btn-outline-danger" onclick="logout()"><i class="bi bi-box-arrow-right me-1"></i>退出登录</button>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="main-box">
+        <div class="main-title">客户评论区</div>
+        
+        <!-- 发表评论表单 -->
+        <div class="comment-form">
+            <h5 class="mb-3"><i class="bi bi-chat-dots me-2"></i>发表评论</h5>
+            <form id="commentForm">
+                <div class="mb-3">
+                    <label class="form-label">评论内容</label>
+                    <textarea class="form-control" id="commentInput" rows="3" placeholder="说点什么..." required></textarea>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">发布方式</label>
+                        <select id="anonymousSelect" class="form-select">
+                            <option value="false">实名发布</option>
+                            <option value="true">匿名发布</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" type="submit">
+                            <i class="bi bi-send me-2"></i>发表评论
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <!-- 查看评论按钮 -->
+        <div class="text-center mb-4">
+            <button class="view-comments-btn" onclick="toggleComments()" id="viewCommentsBtn">
+                <i class="bi bi-eye me-2"></i>查看评论
+            </button>
+        </div>
+        
+        <!-- 搜索区域 -->
+        <div class="search-section" id="searchSection" style="display: none;">
+            <h6 class="mb-3"><i class="bi bi-search me-2"></i>搜索评论</h6>
+            <div class="row">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="searchCustomer" placeholder="搜索发评人...">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="searchContent" placeholder="搜索评论内容...">
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-primary" onclick="searchComments()">
+                        <i class="bi bi-search me-1"></i>搜索
+                    </button>
+                    <button class="btn btn-outline-secondary ms-2" onclick="clearSearch()">
+                        <i class="bi bi-x-circle me-1"></i>清除
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 评论区 -->
+        <div class="comment-section" id="commentSection" style="display: none;">
+            <h5 class="mb-3"><i class="bi bi-chat-square-text me-2"></i>评论列表</h5>
+            <div id="commentList"></div>
+        </div>
+    </div>
+    
+    <script>
+    // 登录态校验
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (!user) {
+        window.location.href = 'login.html';
+    }
+    
+    let allComments = [];
+    let isCommentsVisible = false;
+    
+    function goBack() { window.location.href = 'customer-dashboard.html'; }
+    function goProfile() { window.location.href = 'profile.html'; }
+    function logout() { localStorage.removeItem('user'); window.location.href = 'login.html'; }
+    
+    // 切换评论显示
+    function toggleComments() {
+        isCommentsVisible = !isCommentsVisible;
+        const searchSection = document.getElementById('searchSection');
+        const commentSection = document.getElementById('commentSection');
+        const viewBtn = document.getElementById('viewCommentsBtn');
+        
+        if (isCommentsVisible) {
+            searchSection.style.display = 'block';
+            commentSection.style.display = 'block';
+            viewBtn.innerHTML = '<i class="bi bi-eye-slash me-2"></i>隐藏评论';
+            loadComments();
+        } else {
+            searchSection.style.display = 'none';
+            commentSection.style.display = 'none';
+            viewBtn.innerHTML = '<i class="bi bi-eye me-2"></i>查看评论';
+        }
+    }
+    
+    // 加载评论
+    async function loadComments() {
+        const res = await fetch('/api/comments');
+        allComments = res.ok ? await res.json() : [];
+        displayComments(allComments);
+    }
+    
+    // 显示评论
+    function displayComments(comments) {
+        const container = document.getElementById('commentList');
+        container.innerHTML = '';
+        
+        if (comments.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted py-4">暂无评论</div>';
+            return;
+        }
+        
+        comments.forEach(c => {
+            const isLongComment = c.content.length > 150;
+            const displayContent = isLongComment ? c.content.substring(0, 150) + '...' : c.content;
+            
+            container.innerHTML += `<div class="comment-item">
+                <div class="comment-header">
+                    <div>
+                        <span class="comment-author">${c.anonymous ? '匿名用户' : (c.customerName || '未知用户')}</span>
+                        ${c.anonymous ? '<span class="anonymous-badge">匿名</span>' : ''}
+                    </div>
+                    <span class="comment-time">${c.createdAt ? c.createdAt.replace('T', ' ').substring(0, 19) : ''}</span>
+                </div>
+                <div class="comment-content">
+                    <span id="content-${c.id}">${displayContent}</span>
+                    ${isLongComment ? `<button class="btn btn-link btn-sm p-0 ms-2" onclick="toggleComment(${c.id}, '${c.content.replace(/'/g, "\\'")}')">查看详情</button>` : ''}
+                </div>
+                ${c.customerId === user.id ? `<div class="comment-actions">
+                    <button class="btn btn-sm btn-primary" onclick="editComment(${c.id}, \`${c.content.replace(/`/g, "\\`")}\`, ${c.anonymous})">
+                        <i class="bi bi-pencil me-1"></i>编辑
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteComment(${c.id})">
+                        <i class="bi bi-trash me-1"></i>删除
+                    </button>
+                </div>` : ''}
+            </div>`;
+        });
+    }
+    
+    // 切换评论显示
+    function toggleComment(id, fullContent) {
+        const contentSpan = document.getElementById(`content-${id}`);
+        const button = contentSpan.nextElementSibling;
+        
+        if (contentSpan.textContent.length > 150) {
+            contentSpan.textContent = fullContent;
+            button.textContent = '收起';
+        } else {
+            contentSpan.textContent = fullContent.substring(0, 150) + '...';
+            button.textContent = '查看详情';
+        }
+    }
+    
+    // 搜索评论
+    function searchComments() {
+        const customerSearch = document.getElementById('searchCustomer').value.toLowerCase();
+        const contentSearch = document.getElementById('searchContent').value.toLowerCase();
+        
+        const filteredComments = allComments.filter(c => {
+            const customerMatch = !customerSearch || (c.customerName && c.customerName.toLowerCase().includes(customerSearch));
+            const contentMatch = !contentSearch || (c.content && c.content.toLowerCase().includes(contentSearch));
+            return customerMatch && contentMatch;
+        });
+        displayComments(filteredComments);
+    }
+    
+    // 清除搜索
+    function clearSearch() {
+        document.getElementById('searchCustomer').value = '';
+        document.getElementById('searchContent').value = '';
+        displayComments(allComments);
+    }
+    
+    // 发表新评论
+    document.getElementById('commentForm').onsubmit = async function(e) {
+        e.preventDefault();
+        const data = {
+            customerId: Number(user.id),
+            content: document.getElementById('commentInput').value,
+            anonymous: document.getElementById('anonymousSelect').value === 'true'
+        };
+        await fetch('/api/comments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        document.getElementById('commentInput').value = '';
+        if (isCommentsVisible) {
+            loadComments();
+        }
+    };
+    
+    // 删除评论
+    async function deleteComment(id) {
+        if (!confirm('确定要删除该评论吗？')) return;
+        await fetch('/api/comments/' + id, { method: 'DELETE' });
+        loadComments();
+    }
+    
+    // 编辑评论
+    async function editComment(id, oldContent, oldAnonymous) {
+        const newContent = prompt('修改评论内容：', oldContent);
+        if (newContent === null) return;
+        const anonymous = confirm('是否匿名发布？\n点击"确定"匿名，点击"取消"实名') ? true : false;
+        await fetch('/api/comments/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: newContent, anonymous })
+        });
+        loadComments();
+    }
+    </script>
+</body>
+</html> 

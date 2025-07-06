@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>员工管理 - 智慧宾馆管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #f5f6fa; min-height: 100vh; font-family: '微软雅黑', Arial, Roboto, sans-serif; }
+        .navbar {
+            background: #2563eb;
+            color: #fff;
+            box-shadow: 0 2px 12px rgba(37,99,235,0.10);
+        }
+        .navbar-brand { color: #fff !important; font-weight: bold; font-size: 1.2rem; letter-spacing: 2px; }
+        .main-box { background: #fff; border-radius: 18px; box-shadow: 0 6px 32px rgba(37,99,235,0.10); padding: 40px; max-width: 900px; margin: 40px auto 0 auto; }
+        .main-title { font-size: 1.5rem; font-weight: bold; margin-bottom: 24px; color: #2563eb; text-align: center; }
+        .table th, .table td { vertical-align: middle; }
+        .table-striped > tbody > tr:nth-of-type(odd) { background-color: #f1f5ff; }
+        .role-admin { color: #2563eb; font-weight: bold; }
+        .role-employee { color: #64748b; font-weight: bold; }
+        .btn-outline-secondary, .btn-outline-danger, .btn-outline-primary { border-radius: 8px; }
+        .form-control { border-radius: 8px; }
+        .form-control:focus { border-color: #2563eb; box-shadow: 0 0 0 2px #2563eb33; }
+        .btn-primary { background: #2563eb; border: none; border-radius: 8px; font-weight: bold; }
+        .btn-primary:hover { background: #1d4ed8; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#"><i class="bi bi-building me-2"></i>智慧宾馆管理系统</a>
+            <div class="d-flex">
+                <button class="btn btn-outline-secondary me-2" onclick="goBack()"><i class="bi bi-arrow-left me-1"></i>返回</button>
+                <button class="btn btn-outline-danger" onclick="logout()"><i class="bi bi-box-arrow-right me-1"></i>退出登录</button>
+            </div>
+        </div>
+    </nav>
+    <div class="main-box">
+        <div class="main-title">员工管理</div>
+        
+        <!-- 搜索区域 -->
+        <div class="search-section mb-4">
+            <div class="row">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="searchName" placeholder="搜索员工姓名...">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="searchUsername" placeholder="搜索用户名...">
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-primary" onclick="searchEmployees()">
+                        <i class="bi bi-search me-1"></i>搜索
+                    </button>
+                    <button class="btn btn-outline-secondary ms-2" onclick="clearSearch()">
+                        <i class="bi bi-x-circle me-1"></i>清除
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <button class="btn btn-primary" onclick="showAddForm()"><i class="bi bi-plus-circle me-1"></i>添加员工</button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover table-striped align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>用户名</th>
+                        <th>姓名</th>
+                        <th>电话</th>
+                        <th>角色</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="employeeTable"></tbody>
+            </table>
+        </div>
+    </div>
+    <!-- 添加/编辑员工模态框 -->
+    <div class="modal fade" id="employeeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">添加员工</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="employeeForm">
+                        <input type="hidden" id="employeeId">
+                        <div class="mb-3">
+                            <label class="form-label">用户名</label>
+                            <input type="text" class="form-control" id="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">密码</label>
+                            <input type="password" class="form-control" id="password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">姓名</label>
+                            <input type="text" class="form-control" id="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">电话</label>
+                            <input type="text" class="form-control" id="phone" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">角色</label>
+                            <select class="form-select" id="role" required>
+                                <option value="EMPLOYEE">员工</option>
+                                <option value="ADMIN">管理员</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveEmployee()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // 登录态校验
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (!user || user.role !== 'ADMIN') {
+        window.location.href = 'login.html';
+    }
+    function goBack() { window.location.href = 'admin-dashboard.html'; }
+    function logout() { localStorage.removeItem('user'); window.location.href = 'login.html'; }
+    // 加载员工列表
+    async function loadEmployees() {
+        const res = await fetch('/api/employees');
+        const data = res.ok ? await res.json() : [];
+        displayEmployees(data);
+    }
+    
+    // 显示员工列表
+    function displayEmployees(employees) {
+        const tbody = document.getElementById('employeeTable');
+        tbody.innerHTML = '';
+        employees.forEach(e => {
+            tbody.innerHTML += `<tr>
+                <td>${e.username}</td>
+                <td>${e.name}</td>
+                <td>${e.phone}</td>
+                <td>${e.role === 'ADMIN' ? '<span class=\'role-admin\'>管理员</span>' : '<span class=\'role-employee\'>员工</span>'}</td>
+                <td>
+                    <button class="btn btn-outline-primary btn-sm me-1" onclick="editEmployee(${e.id})"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="deleteEmployee(${e.id})"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>`;
+        });
+    }
+    
+    // 搜索员工
+    function searchEmployees() {
+        const nameSearch = document.getElementById('searchName').value.toLowerCase();
+        const usernameSearch = document.getElementById('searchUsername').value.toLowerCase();
+        
+        fetch('/api/employees')
+            .then(res => res.json())
+            .then(data => {
+                const filteredEmployees = data.filter(e => {
+                    const nameMatch = !nameSearch || (e.name && e.name.toLowerCase().includes(nameSearch));
+                    const usernameMatch = !usernameSearch || (e.username && e.username.toLowerCase().includes(usernameSearch));
+                    return nameMatch && usernameMatch;
+                });
+                displayEmployees(filteredEmployees);
+            });
+    }
+    
+    // 清除搜索
+    function clearSearch() {
+        document.getElementById('searchName').value = '';
+        document.getElementById('searchUsername').value = '';
+        loadEmployees();
+    }
+    // 显示添加表单
+    function showAddForm() {
+        document.getElementById('modalTitle').textContent = '添加员工';
+        document.getElementById('employeeForm').reset();
+        document.getElementById('employeeId').value = '';
+        document.getElementById('password').required = true;
+        new bootstrap.Modal(document.getElementById('employeeModal')).show();
+    }
+    // 编辑员工
+    async function editEmployee(id) {
+        const res = await fetch('/api/employees/' + id);
+        const data = res.ok ? await res.json() : {};
+        document.getElementById('modalTitle').textContent = '编辑员工';
+        document.getElementById('employeeId').value = data.id;
+        document.getElementById('username').value = data.username;
+        document.getElementById('password').value = '';
+        document.getElementById('password').required = false;
+        document.getElementById('name').value = data.name;
+        document.getElementById('phone').value = data.phone;
+        document.getElementById('role').value = data.role;
+        new bootstrap.Modal(document.getElementById('employeeModal')).show();
+    }
+    // 保存员工
+    async function saveEmployee() {
+        const id = document.getElementById('employeeId').value;
+        const data = {
+            username: document.getElementById('username').value,
+            name: document.getElementById('name').value,
+            phone: document.getElementById('phone').value,
+            role: document.getElementById('role').value
+        };
+        if (document.getElementById('password').value) {
+            data.password = document.getElementById('password').value;
+        }
+        const url = id ? '/api/employees/' + id : '/api/employees';
+        const method = id ? 'PUT' : 'POST';
+        await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        bootstrap.Modal.getInstance(document.getElementById('employeeModal')).hide();
+        loadEmployees();
+    }
+    // 删除员工
+    async function deleteEmployee(id) {
+        if (!confirm('确定要删除这个员工吗？')) return;
+        await fetch('/api/employees/' + id, { method: 'DELETE' });
+        loadEmployees();
+    }
+    loadEmployees();
+    </script>
+</body>
+</html> 

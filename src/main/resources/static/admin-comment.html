@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>评论管理 - 智慧宾馆管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #f5f6fa; min-height: 100vh; font-family: '微软雅黑', Arial, Roboto, sans-serif; }
+        .navbar {
+            background: #2563eb;
+            color: #fff;
+            box-shadow: 0 2px 12px rgba(37,99,235,0.10);
+        }
+        .navbar-brand { color: #fff !important; font-weight: bold; font-size: 1.2rem; letter-spacing: 2px; }
+        .main-box { background: #fff; border-radius: 18px; box-shadow: 0 6px 32px rgba(37,99,235,0.10); padding: 40px; max-width: 900px; margin: 40px auto 0 auto; }
+        .main-title { font-size: 1.5rem; font-weight: bold; margin-bottom: 24px; color: #2563eb; text-align: center; }
+        .comment-card { background: #f1f5ff; border-radius: 12px; box-shadow: 0 2px 8px rgba(37,99,235,0.08); padding: 18px 24px; margin-bottom: 18px; }
+        .comment-meta { color: #64748b; font-size: 0.95rem; margin-bottom: 6px; }
+        .comment-content { font-size: 1.08rem; margin-bottom: 4px; }
+        .comment-actions { text-align: right; }
+        .btn-outline-secondary, .btn-outline-danger, .btn-outline-primary { border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#"><i class="bi bi-building me-2"></i>智慧宾馆管理系统</a>
+            <div class="d-flex">
+                <button class="btn btn-outline-secondary me-2" onclick="goBack()"><i class="bi bi-arrow-left me-1"></i>返回</button>
+                <button class="btn btn-outline-danger" onclick="logout()"><i class="bi bi-box-arrow-right me-1"></i>退出登录</button>
+            </div>
+        </div>
+    </nav>
+    <div class="main-box">
+        <div class="main-title">评论管理</div>
+        
+        <!-- 搜索区域 -->
+        <div class="search-section mb-4">
+            <div class="row">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="searchCustomer" placeholder="搜索发评人...">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="searchContent" placeholder="搜索评论内容...">
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-primary" onclick="searchComments()">
+                        <i class="bi bi-search me-1"></i>搜索
+                    </button>
+                    <button class="btn btn-outline-secondary ms-2" onclick="clearSearch()">
+                        <i class="bi bi-x-circle me-1"></i>清除
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="commentList"></div>
+    </div>
+    <script>
+    // 登录态校验
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (!user || user.role !== 'ADMIN') {
+        window.location.href = 'login.html';
+    }
+    function goBack() { window.location.href = 'admin-dashboard.html'; }
+    function logout() { localStorage.removeItem('user'); window.location.href = 'login.html'; }
+    // 加载评论列表
+    async function loadComments() {
+        const res = await fetch('/api/comments');
+        const data = res.ok ? await res.json() : [];
+        displayComments(data);
+    }
+    
+    // 显示评论
+    function displayComments(comments) {
+        const container = document.getElementById('commentList');
+        container.innerHTML = '';
+        comments.forEach(c => {
+            const isLongComment = c.content.length > 100;
+            const displayContent = isLongComment ? c.content.substring(0, 100) + '...' : c.content;
+            
+            container.innerHTML += `<div class="comment-card">
+                <div class="comment-meta">${c.customerName} - ${c.createdAt ? c.createdAt.replace('T', ' ').substring(0, 19) : ''}</div>
+                <div class="comment-content">
+                    <span id="content-${c.id}">${displayContent}</span>
+                    ${isLongComment ? `<button class="btn btn-link btn-sm p-0 ms-2" onclick="toggleComment(${c.id}, '${c.content.replace(/'/g, "\\'")}')">查看详情</button>` : ''}
+                </div>
+                <div class="comment-actions">
+                    <button class="btn btn-outline-danger btn-sm" onclick="deleteComment(${c.id})"><i class="bi bi-trash me-1"></i>删除</button>
+                </div>
+            </div>`;
+        });
+    }
+    
+    // 切换评论显示
+    function toggleComment(id, fullContent) {
+        const contentSpan = document.getElementById(`content-${id}`);
+        const button = contentSpan.nextElementSibling;
+        
+        if (contentSpan.textContent.length > 100) {
+            // 当前显示的是截断内容，切换到完整内容
+            contentSpan.textContent = fullContent;
+            button.textContent = '收起';
+        } else {
+            // 当前显示的是完整内容，切换到截断内容
+            contentSpan.textContent = fullContent.substring(0, 100) + '...';
+            button.textContent = '查看详情';
+        }
+    }
+    
+    // 搜索评论
+    function searchComments() {
+        const customerSearch = document.getElementById('searchCustomer').value.toLowerCase();
+        const contentSearch = document.getElementById('searchContent').value.toLowerCase();
+        
+        fetch('/api/comments')
+            .then(res => res.json())
+            .then(data => {
+                const filteredComments = data.filter(c => {
+                    const customerMatch = !customerSearch || (c.customerName && c.customerName.toLowerCase().includes(customerSearch));
+                    const contentMatch = !contentSearch || (c.content && c.content.toLowerCase().includes(contentSearch));
+                    return customerMatch && contentMatch;
+                });
+                displayComments(filteredComments);
+            });
+    }
+    
+    // 清除搜索
+    function clearSearch() {
+        document.getElementById('searchCustomer').value = '';
+        document.getElementById('searchContent').value = '';
+        loadComments();
+    }
+    
+    // 删除评论
+    async function deleteComment(id) {
+        if (!confirm('确定要删除这条评论吗？')) return;
+        await fetch('/api/comments/' + id, { method: 'DELETE' });
+        loadComments();
+    }
+    loadComments();
+    </script>
+</body>
+</html> 
